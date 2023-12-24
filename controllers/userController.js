@@ -32,10 +32,10 @@ const signInUser = asyncHandler(async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
-      }
+      },
     });
   } else {
-    throw new AppError('Invalid email or password', 401);
+    throw new AppError("Invalid email or password", 401);
   }
 });
 
@@ -48,14 +48,14 @@ const signUpUser = asyncHandler(async (req, res) => {
   const userExists = await User.findOne({ email });
 
   if (userExists) {
-    throw new AppError('User already exists', 400);
+    throw new AppError("User already exists", 400);
   }
 
   const user = await User.create({
     name,
     email,
     password,
-    confirmPassword
+    confirmPassword,
   });
 
   if (user) {
@@ -65,10 +65,10 @@ const signUpUser = asyncHandler(async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
-      }
+      },
     });
   } else {
-    throw new AppError('Invalid user data', 400);
+    throw new AppError("Invalid user data", 400);
   }
 });
 
@@ -76,11 +76,11 @@ const signUpUser = asyncHandler(async (req, res) => {
 // route        POST /api/v1/users/signOut
 // access       Public
 const signOutUser = asyncHandler((req, res) => {
-  res.cookie('jwt', '', {
+  res.cookie("jwt", "", {
     httpOnly: true,
     expires: new Date(0),
   });
-  res.status(200).json({ message: 'Signed out successfully' });
+  res.status(200).json({ message: "Signed out successfully" });
 });
 
 // description  Get a user profile
@@ -94,10 +94,10 @@ const getUserProfile = asyncHandler(async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
-      }
+      },
     });
   } else {
-    throw new AppError('User not found', 404);
+    throw new AppError("User not found", 404);
   }
 });
 
@@ -107,21 +107,39 @@ const getUserProfile = asyncHandler(async (req, res) => {
 const updateUserProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
 
-  if (user) {
-    user.name = req.body.name || user.name;
-    user.email = req.body.email || user.email;
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
 
-    const updatedUser = await user.save();
+  const allowableFieldsForUpdate = ["name"];
+  const updatePayload = {};
 
-    res.status(200).json({
-      data: {
-        _id: updatedUser._id,
-        name: updatedUser.name,
-        email: updatedUser.email,
-      }
-    });
-  } else {
-    throw new AppError('User not found', 404);
+  for (let field of Object.keys(req.body)) {
+    if (req.body[field] !== "" && allowableFieldsForUpdate.includes(field)) {
+      updatePayload[field] = req.body[field];
+    }
+  }
+
+  if (Object.keys(updatePayload).length === 0) {
+    throw new AppError("Failed to udpate.", 400);
+  }
+
+  const updatedUser = await User.findOneAndUpdate(
+    { _id: req.user._id },
+    { $set: updatePayload },
+    { new: true }
+  );
+
+  res.status(200).json({
+    data: {
+      _id: updatedUser._id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+    },
+  });
+
+  if (!updatedUser) {
+    throw new AppError("Failed to udpate.", 400);
   }
 });
 
@@ -130,5 +148,5 @@ export {
   signUpUser,
   signOutUser,
   getUserProfile,
-  updateUserProfile
-}
+  updateUserProfile,
+};
